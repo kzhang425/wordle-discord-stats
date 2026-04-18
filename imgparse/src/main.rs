@@ -2,22 +2,36 @@ use ocrs::{ImageSource, OcrEngine, OcrEngineParams};
 use rten::Model;
 use std::io::Read;
 use std::path::PathBuf;
+use std::time::Instant;
 
-fn extract_wordle_number(img: &image::DynamicImage) -> Option<u32> {
+macro_rules! timed {
+    ($debug:expr, $label:expr, $block:expr) => {{
+        let t = Instant::now();
+        let result = $block;
+        if $debug {
+            eprintln!("[debug] {}: {:?}", $label, t.elapsed());
+        }
+        result
+    }};
+}
+
+fn extract_wordle_number(img: &image::DynamicImage, debug: bool) -> Option<u32> {
     let models_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("models");
-    let detection_model = Model::load_file(models_dir.join("text-detection.rten")).ok()?;
-    let recognition_model = Model::load_file(models_dir.join("text-recognition.rten")).ok()?;
-    let engine = OcrEngine::new(OcrEngineParams {
+    let detection_model = timed!(debug, "load detection model",
+        Model::load_file(models_dir.join("text-detection.rten")).ok()?);
+    let recognition_model = timed!(debug, "load recognition model",
+        Model::load_file(models_dir.join("text-recognition.rten")).ok()?);
+    let engine = timed!(debug, "init engine", OcrEngine::new(OcrEngineParams {
         detection_model: Some(detection_model),
         recognition_model: Some(recognition_model),
         ..Default::default()
     })
-    .ok()?;
+    .ok()?);
 
-    let rgb = img.to_rgb8();
+    let rgb = timed!(debug, "to_rgb8", img.to_rgb8());
     let img_source = ImageSource::from_bytes(rgb.as_raw(), rgb.dimensions()).ok()?;
-    let ocr_input = engine.prepare_input(img_source).ok()?;
-    let text = engine.get_text(&ocr_input).ok()?;
+    let ocr_input = timed!(debug, "prepare_input", engine.prepare_input(img_source).ok()?);
+    let text = timed!(debug, "get_text", engine.get_text(&ocr_input).ok()?);
 
     let words: Vec<&str> = text.split_whitespace().collect();
     for i in 0..words.len().saturating_sub(1) {
@@ -30,23 +44,26 @@ fn extract_wordle_number(img: &image::DynamicImage) -> Option<u32> {
     None
 }
 
-fn load_image(src: &str) -> image::DynamicImage {
+fn load_image(src: &str, debug: bool) -> image::DynamicImage {
     if src.starts_with("http://") || src.starts_with("https://") {
-        let resp = ureq::get(src).call().expect("failed to fetch image");
-        let mut bytes = Vec::new();
-        resp.into_reader().read_to_end(&mut bytes).expect("failed to read image bytes");
-        image::load_from_memory(&bytes).expect("failed to decode image")
+        timed!(debug, "fetch image", {
+            let resp = ureq::get(src).call().expect("failed to fetch image");
+            let mut bytes = Vec::new();
+            resp.into_reader().read_to_end(&mut bytes).expect("failed to read image bytes");
+            image::load_from_memory(&bytes).expect("failed to decode image")
+        })
     } else {
-        image::open(src).expect("failed to open image")
+        timed!(debug, "open image", image::open(src).expect("failed to open image"))
     }
 }
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    let src = args.iter().find(|a| *a != &args[0])
-        .expect("usage: imgparse <url-or-path>");
-    let img = load_image(src);
-    match extract_wordle_number(&img) {
+    let debug = args.iter().any(|a| a == "--debug");
+    let src = args.iter().skip(1).find(|a| *a != "--debug")
+        .expect("usage: imgparse [--debug] <url-or-path>");
+    let img = load_image(src, debug);
+    match extract_wordle_number(&img, debug) {
         Some(n) => println!("{}", n),
         None => {
             eprintln!("could not extract wordle number");
