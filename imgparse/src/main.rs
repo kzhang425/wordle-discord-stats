@@ -16,7 +16,9 @@ macro_rules! timed {
 }
 
 fn load_engine(debug: bool) -> Option<OcrEngine> {
-    let models_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("models");
+    let models_dir = std::env::var("IMGPARSE_MODELS_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("models"));
     let detection_model = timed!(debug, "load detection model",
         Model::load_file(models_dir.join("text-detection.rten")).ok()?);
     let recognition_model = timed!(debug, "load recognition model",
