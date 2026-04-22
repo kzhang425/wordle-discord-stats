@@ -83,8 +83,9 @@ func New(token, guildID string, st store.Store, resolver Resolver) (*Bot, error)
 	return b, nil
 }
 
-func (b *Bot) Close()                      { b.session.Close() }
-func (b *Bot) Session() *discordgo.Session { return b.session }
+func (b *Bot) Close()                        { b.session.Close() }
+func (b *Bot) Session() *discordgo.Session   { return b.session }
+func (b *Bot) SetResolver(r Resolver)        { b.resolver = r }
 
 func (b *Bot) handleInteraction(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	if i.Type != discordgo.InteractionApplicationCommand {
