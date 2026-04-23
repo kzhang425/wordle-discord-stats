@@ -73,7 +73,16 @@ func (f *FileStore) load() ([]WordleResult, error) {
 		}
 		results = append(results, r)
 	}
-	return results, scanner.Err()
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	sort.Slice(results, func(i, j int) bool {
+		if results[i].Day != results[j].Day {
+			return results[i].Day < results[j].Day
+		}
+		return PlayerKey(results[i]) < PlayerKey(results[j])
+	})
+	return results, nil
 }
 
 func (f *FileStore) persist(results []WordleResult) error {
