@@ -55,13 +55,16 @@ const (
 	KindScoresAtMost
 )
 
-// Selector picks which subset of the player→value mapping to return.
+// Selector picks which subset of the player→value mapping to return. "Top"
+// and "Bottom" are semantic: for averages lower is better, for Elo / streaks
+// / counts higher is better, and each kind sorts accordingly before the
+// selector slices. TopK returns the best K for the kind; BottomK the worst.
 type Selector int
 
 const (
-	SelectorTopK    Selector = iota // lowest values first (best Wordle scores)
-	SelectorBottomK                 // highest values first
-	SelectorPlayer                  // single player, identified by Query.Player
+	SelectorTopK Selector = iota
+	SelectorBottomK
+	SelectorPlayer // single player, identified by Query.Player
 )
 
 type Query struct {
