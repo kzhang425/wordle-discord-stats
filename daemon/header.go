@@ -69,7 +69,7 @@ func allTimeStreakFact(st store.Store) string {
 		return ""
 	}
 	e := res.Entries[0]
-	return fmt.Sprintf("_Fun fact: %s had a %d-day streak ending on wordle %d._", e.Name, int(e.Value), e.Day)
+	return fmt.Sprintf("_Fun fact: %s's best streak was %d long, ended on wordle %d._", e.Name, int(e.Value), e.Day)
 }
 
 // scoresAtMostFact picks a random x in [2,4] and a random player whose count
